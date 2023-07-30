@@ -1,6 +1,59 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include <iostream>
+#include <fstream>
+#include <string>
+
+static unsigned int CompileShader(unsigned int type, const std::string& filepath)
+{
+
+    std::ifstream stream(filepath);
+    std::string line;
+    std::string source;
+
+    while (getline(stream, line))
+    {
+        source.append(line + '\n');
+    }
+
+    std::cout << "COMPILING " << ((type == GL_VERTEX_SHADER) ? "VERTEX " : "FRAGMENT ") << "SHADER: " << filepath << std::endl;
+
+    unsigned int id = glCreateShader(type);
+    const char* src = source.c_str();
+    glShaderSource(id, 1, &src, nullptr);
+    glCompileShader(id);
+
+    int result;
+    glGetShaderiv(id, GL_COMPILE_STATUS, &result);
+    if (result == GL_FALSE) 
+    {
+        int length;
+        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
+        char* message = (char*)_malloca(length * sizeof(char));
+        glGetShaderInfoLog(id, length, &length, message);
+        std::cout << type << " - Failed to compile shader!: " << message << std::endl;
+    }
+
+    return id;
+}
+
+static int CreateShader()
+{
+    unsigned int program = glCreateProgram();
+    unsigned int vs = CompileShader(GL_VERTEX_SHADER, "res/vertex_shader.txt");
+    unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, "res/fragment_shader.txt");
+
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
+    glLinkProgram(program);
+    glValidateProgram(program);
+    
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    return program;
+}
 
 int main(void)
 {
@@ -26,8 +79,6 @@ int main(void)
         glfwTerminate();
     }
 
-    
-
     // Vertex Buffer
     float positions[6] = {
         -1, -1,
@@ -52,6 +103,9 @@ int main(void)
 
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
+
+    unsigned int shader = CreateShader();
+    glUseProgram(shader);
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
